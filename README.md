@@ -10,7 +10,8 @@ Updating Ubuntu
 `sudo apt-get install build-essential`
 ℹ️ “upgrade” is very important as python stuff will explode later if you don’t
 
-# Cloning the PrivateGPT repo
+# Cloning the PrivateGPT repo (You can choose to clone our repo but we suggest that you use the main repository instead)
+`git clone https://github.com/Sora1173/private-GPT`
 `git clone https://github.com/imartinez/privateGPT`
 
 # Setting Up Python Environment
