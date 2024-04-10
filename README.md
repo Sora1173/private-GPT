@@ -1,161 +1,100 @@
-# 🔒 PrivateGPT 📑
+# Introduction
+This will be the guide on how to setup privateGPT, installing this took a lot of our time and we did a lot of configuration so we suggest that you clone the original repository of privateGPT. This is our codebase and it is open-source so feel free to jump in.
+>You can check the documentation here: https://docs.privategpt.dev/
+# Prerequisites
+Make sure you have the latest version of Ubuntu WSL installed. You can choose from versions such as Ubuntu-22–04–3 LTS or Ubuntu-22–04–6 LTS available on the Windows Store. (You can use WSL -)
 
-[![Tests](https://github.com/imartinez/privateGPT/actions/workflows/tests.yml/badge.svg)](https://github.com/imartinez/privateGPT/actions/workflows/tests.yml?query=branch%3Amain)
-[![Website](https://img.shields.io/website?up_message=check%20it&down_message=down&url=https%3A%2F%2Fdocs.privategpt.dev%2F&label=Documentation)](https://docs.privategpt.dev/)
+Updating Ubuntu
+`sudo apt-get update`
+`sudo apt-get upgrade`
+`sudo apt-get install build-essential`
+ℹ️ “upgrade” is very important as python stuff will explode later if you don’t
 
-[![Discord](https://img.shields.io/discord/1164200432894234644?logo=discord&label=PrivateGPT)](https://discord.gg/bK6mRVpErU)
-[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/ZylonPrivateGPT)](https://twitter.com/ZylonPrivateGPT)
+# Cloning the PrivateGPT repo
+`git clone https://github.com/imartinez/privateGPT`
 
+# Setting Up Python Environment
+To manage Python versions, we’ll use pyenv. Follow the commands below to install it and set up the Python environment:
+`sudo apt-get install git gcc make openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev zlib1g-dev libncursesw5-dev libgdbm-dev libc6-dev zlib1g-dev libsqlite3-dev tk-dev libssl-dev openssl libffi-dev`
 
-> Install & usage docs: https://docs.privategpt.dev/
-> 
-> Join the community: [Twitter](https://twitter.com/PrivateGPT_AI) & [Discord](https://discord.gg/bK6mRVpErU)
+`curl https://pyenv.run | bash`
 
-![Gradio UI](/fern/docs/assets/ui.png?raw=true)
+`export PATH="/home/$(whoami)/.pyenv/bin:$PATH"`
 
-PrivateGPT is a production-ready AI project that allows you to ask questions about your documents using the power
-of Large Language Models (LLMs), even in scenarios without an Internet connection. 100% private, no data leaves your
-execution environment at any point.
+Add the following lines to your .bashrc file:
+`export PYENV_ROOT="$HOME/.pyenv"`
+`[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"`
+`eval "$(pyenv init -)"`
 
-The project provides an API offering all the primitives required to build private, context-aware AI applications.
-It follows and extends the [OpenAI API standard](https://openai.com/blog/openai-api),
-and supports both normal and streaming responses.
+Reload your terminal
+`source .bashrc`
 
-The API is divided into two logical blocks:
+Install important missing pyenv stuff
+`sudo apt-get install lzma`
+`sudo apt-get install liblzma-dev`
 
-**High-level API**, which abstracts all the complexity of a RAG (Retrieval Augmented Generation)
-pipeline implementation:
-- Ingestion of documents: internally managing document parsing,
-splitting, metadata extraction, embedding generation and storage.
-- Chat & Completions using context from ingested documents:
-abstracting the retrieval of context, the prompt engineering and the response generation.
+Install Python 3.11 and set it as the global version:
+`pyenv install 3.11`
+`pyenv global 3.11`
+`pip install pip --upgrade`
+`pyenv local 3.11`
 
-**Low-level API**, which allows advanced users to implement their own complex pipelines:
-- Embeddings generation: based on a piece of text.
-- Contextual chunks retrieval: given a query, returns the most relevant chunks of text from the ingested documents.
+# Poetry Installation
+Install poetry to manage dependencies:
+`curl -sSL https://install.python-poetry.org | python3 -`
 
-In addition to this, a working [Gradio UI](https://www.gradio.app/)
-client is provided to test the API, together with a set of useful tools such as bulk model
-download script, ingestion script, documents folder watch, etc.
+Add the following line to your .bashrc:
+`export PATH="/home/<YOU USERNAME>/.local/bin:$PATH"`
+ℹ️ Replace by your WSL username ($ whoami)
 
-> 👂 **Need help applying PrivateGPT to your specific use case?**
-> [Let us know more about it](https://forms.gle/4cSDmH13RZBHV9at7)
-> and we'll try to help! We are refining PrivateGPT through your feedback.
+Reload your configuration
+`source ~/.bashrc`
+`poetry --version` # run this command, it should display something without errors
 
-## 🎞️ Overview
-DISCLAIMER: This README is not updated as frequently as the [documentation](https://docs.privategpt.dev/).
-Please check it out for the latest updates!
+# Installing PrivateGPT Dependencies
+Navigate to the PrivateGPT directory and install dependencies:
+`cd privateGPT`
+`poetry install --extras "ui embeddings-huggingface llms-llama-cpp vector-stores-qdrant"`
 
-### Motivation behind PrivateGPT
-Generative AI is a game changer for our society, but adoption in companies of all sizes and data-sensitive
-domains like healthcare or legal is limited by a clear concern: **privacy**.
-Not being able to ensure that your data is fully under your control when using third-party AI tools
-is a risk those industries cannot take.
+# Nvidia Drivers Installation
+Visit Nvidia’s official website to download and install the Nvidia drivers for WSL. Choose Windows > x86_64 > WSL-Ubuntu > 2.0 > deb (network)
 
-### Primordial version
-The first version of PrivateGPT was launched in May 2023 as a novel approach to address the privacy
-concerns by using LLMs in a complete offline way.
+Follow the instructions provided on the page.
 
-That version, which rapidly became a go-to project for privacy-sensitive setups and served as the seed
-for thousands of local-focused generative AI projects, was the foundation of what PrivateGPT is becoming nowadays;
-thus a simpler and more educational implementation to understand the basic concepts required
-to build a fully local -and therefore, private- chatGPT-like tool.
+Add the following lines to your .bashrc:
+`export PATH="/usr/local/cuda-12.4/bin:$PATH"`
+`export LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:$LD_LIBRARY_PATH"`
+ℹ️ Maybe check the content of “/usr/local” to be sure that you do have the “cuda-12.4” folder. Yours might have a different version.
 
-If you want to keep experimenting with it, we have saved it in the
-[primordial branch](https://github.com/imartinez/privateGPT/tree/primordial) of the project.
+Reload your configuration and check that all is working as expected
+`source ~/.bashrc`
+`nvcc --version`
+`nvidia-smi.exe`
+ℹ️ “nvidia-smi” isn’t available on WSL so just verify that the .exe one detects your hardware. Both commands should displayed gibberish but no apparent errors.
 
-> It is strongly recommended to do a clean clone and install of this new version of
-PrivateGPT if you come from the previous, primordial version.
+Building and Running PrivateGPT
+Finally, install LLAMA CUDA libraries and Python bindings:
+`CMAKE_ARGS='-DLLAMA_CUBLAS=on' poetry run pip install --force-reinstall --no-cache-dir llama-cpp-python`
 
-### Present and Future of PrivateGPT
-PrivateGPT is now evolving towards becoming a gateway to generative AI models and primitives, including
-completions, document ingestion, RAG pipelines and other low-level building blocks.
-We want to make it easier for any developer to build AI applications and experiences, as well as provide
-a suitable extensive architecture for the community to keep contributing.
+Let private GPT download a local LLM for you (mixtral by default):
+`poetry run python scripts/setup`
 
-Stay tuned to our [releases](https://github.com/imartinez/privateGPT/releases) to check out all the new features and changes included.
+To run PrivateGPT, use the following command:
+`make run`
 
-## 📄 Documentation
-Full documentation on installation, dependencies, configuration, running the server, deployment options,
-ingesting local documents, API details and UI features can be found here: https://docs.privategpt.dev/
+This will initialize and boot PrivateGPT with GPU support on your WSL environment.
 
-## 🧩 Architecture
-Conceptually, PrivateGPT is an API that wraps a RAG pipeline and exposes its
-primitives.
-* The API is built using [FastAPI](https://fastapi.tiangolo.com/) and follows
-  [OpenAI's API scheme](https://platform.openai.com/docs/api-reference).
-* The RAG pipeline is based on [LlamaIndex](https://www.llamaindex.ai/).
+ℹ️ You should see “blas = 1” if GPU offload is working.
+...............................................................................................
+>llama_new_context_with_model: n_ctx      = 3900
+llama_new_context_with_model: freq_base  = 1000000.0
+llama_new_context_with_model: freq_scale = 1
+llama_kv_cache_init:      CUDA0 KV buffer size =   487.50 MiB
+llama_new_context_with_model: KV self size  =  487.50 MiB, K (f16):  243.75 MiB, V (f16):  243.75 MiB
+llama_new_context_with_model: graph splits (measure): 3
+llama_new_context_with_model:      CUDA0 compute buffer size =   275.37 MiB
+llama_new_context_with_model:  CUDA_Host compute buffer size =    15.62 MiB
+AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | FMA = 1 | NEON = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | BLAS = 1 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 |
+18:50:50.097 [INFO    ] private_gpt.components.embedding.embedding_component - Initializing the embedding model in mode=local 
 
-The design of PrivateGPT allows to easily extend and adapt both the API and the
-RAG implementation. Some key architectural decisions are:
-* Dependency Injection, decoupling the different components and layers.
-* Usage of LlamaIndex abstractions such as `LLM`, `BaseEmbedding` or `VectorStore`,
-  making it immediate to change the actual implementations of those abstractions.
-* Simplicity, adding as few layers and new abstractions as possible.
-* Ready to use, providing a full implementation of the API and RAG
-  pipeline.
-
-Main building blocks:
-* APIs are defined in `private_gpt:server:<api>`. Each package contains an
-  `<api>_router.py` (FastAPI layer) and an `<api>_service.py` (the
-  service implementation). Each *Service* uses LlamaIndex base abstractions instead
-  of specific implementations,
-  decoupling the actual implementation from its usage.
-* Components are placed in
-  `private_gpt:components:<component>`. Each *Component* is in charge of providing
-  actual implementations to the base abstractions used in the Services - for example
-  `LLMComponent` is in charge of providing an actual implementation of an `LLM`
-  (for example `LlamaCPP` or `OpenAI`).
-
-## 💡 Contributing
-Contributions are welcomed! To ensure code quality we have enabled several format and
-typing checks, just run `make check` before committing to make sure your code is ok.
-Remember to test your code! You'll find a tests folder with helpers, and you can run
-tests using `make test` command.
-
-Don't know what to contribute? Here is the public 
-[Project Board](https://github.com/users/imartinez/projects/3) with several ideas. 
-
-Head over to Discord 
-#contributors channel and ask for write permissions on that GitHub project.
-
-## 💬 Community
-Join the conversation around PrivateGPT on our:
-- [Twitter (aka X)](https://twitter.com/PrivateGPT_AI)
-- [Discord](https://discord.gg/bK6mRVpErU)
-
-## 📖 Citation
-If you use PrivateGPT in a paper, check out the [Citation file](CITATION.cff) for the correct citation.  
-You can also use the "Cite this repository" button in this repo to get the citation in different formats.
-
-Here are a couple of examples:
-
-#### BibTeX
-```bibtex
-@software{Martinez_Toro_PrivateGPT_2023,
-author = {Martínez Toro, Iván and Gallego Vico, Daniel and Orgaz, Pablo},
-license = {Apache-2.0},
-month = may,
-title = {{PrivateGPT}},
-url = {https://github.com/imartinez/privateGPT},
-year = {2023}
-}
-```
-
-#### APA
-```
-Martínez Toro, I., Gallego Vico, D., & Orgaz, P. (2023). PrivateGPT [Computer software]. https://github.com/imartinez/privateGPT
-```
-
-## 🤗 Partners & Supporters
-PrivateGPT is actively supported by the teams behind:
-* [Qdrant](https://qdrant.tech/), providing the default vector database
-* [Fern](https://buildwithfern.com/), providing Documentation and SDKs
-* [LlamaIndex](https://www.llamaindex.ai/), providing the base RAG framework and abstractions
-
-This project has been strongly influenced and supported by other amazing projects like 
-[LangChain](https://github.com/hwchase17/langchain),
-[GPT4All](https://github.com/nomic-ai/gpt4all),
-[LlamaCpp](https://github.com/ggerganov/llama.cpp),
-[Chroma](https://www.trychroma.com/)
-and [SentenceTransformers](https://www.sbert.net/).
+ℹ️ Go to` 127.0.0.1:8001` in your browser

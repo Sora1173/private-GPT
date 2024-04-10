@@ -6,6 +6,7 @@ import time
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+import fitz
 
 import gradio as gr  # type: ignore
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from gradio.themes.utils.colors import slate  # type: ignore
 from injector import inject, singleton
 from llama_index.core.llms import ChatMessage, ChatResponse, MessageRole
 from pydantic import BaseModel
+
 
 from private_gpt.constants import PROJECT_ROOT_PATH
 from private_gpt.di import global_injector
@@ -22,6 +24,8 @@ from private_gpt.server.chunks.chunks_service import Chunk, ChunksService
 from private_gpt.server.ingest.ingest_service import IngestService
 from private_gpt.settings.settings import settings
 from private_gpt.ui.images import logo_svg
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -290,98 +294,155 @@ class PrivateGptUi:
 
     def _selected_a_file(self, select_data: gr.SelectData) -> Any:
         self._selected_filename = select_data.value
+        # content = self._get_file_content(self._selected_filename)
         return [
             gr.components.Button(interactive=True),
             gr.components.Button(interactive=True),
             gr.components.Textbox(self._selected_filename),
+            # content
         ]
+            
+    # def _get_file_content(self, filename: str) -> str:
+    #     content = ""
+    #     for ingested_document in self._ingest_service.list_ingested():
+    #         if (
+    #             ingested_document.doc_metadata
+    #             and ingested_document.doc_metadata["file_name"] == filename
+    #         ):
+    #             content = ingested_document.doc_metadata.get("content", "")  # Adjust this according to the actual attribute name
+    #             break
+        
+    #     print("Retrieved content:", content)
 
+    #     return content
+    
+    #MARK: CSS
     def _build_ui_blocks(self) -> gr.Blocks:
         logger.debug("Creating the UI blocks")
         with gr.Blocks(
             title=UI_TAB_TITLE,
-            theme=gr.themes.Soft(primary_hue=slate),
-            css=".logo { "
-            "display:flex;"
-            "background-color: #C7BAFF;"
-            "height: 80px;"
-            "border-radius: 8px;"
-            "align-content: center;"
-            "justify-content: center;"
-            "align-items: center;"
-            "}"
-            ".logo img { height: 25% }"
-            ".contain { display: flex !important; flex-direction: column !important; }"
-            "#component-0, #component-3, #component-10, #component-8  { height: 100% !important; }"
-            "#chatbot { flex-grow: 1 !important; overflow: auto !important;}"
-            "#col { height: calc(100vh - 112px - 16px) !important; }",
+            theme=gr.themes.Monochrome(
+                
+            ).set(
+                body_text_color='*primary_950',
+                body_text_color_subdued='*neutral_800',
+                code_background_fill='*neutral_50',
+                block_background_fill='*neutral_100',
+                
+            ),
+            
+            css=
+                ".custom-margin {"
+                    "margin: 8px !important;"
+                "}"
+                
+                ".gradio-container {"
+                    "background-color: white;"
+                    "width: 100vw !important;"
+                    
+                "}"
+            
+                ".logo {"
+                    "display:flex;"
+                    "background-color: white;"
+                    "height: 80px;"
+                    "border-radius: 8px;"
+                    "align-content: center;"
+                    "justify-content: left;"
+                    "align-items: center;"
+                    "padding-left: 16px;"
+                    "margin-bottom: 0;"
+                "}"
+
+                ".logo img { "
+                    "height: 25%;"
+                    "padding-left: 24px"
+                "}"
+
+                ".contain { "
+                    "display: flex !important; flex-direction: column !important;"
+                "}"
+                "#component-0, #component-3, #component-10, #component-8  { height: 100% !important; width: 100% !important; }"
+                "#chatbot { flex-grow: 1 !important; overflow: auto !important;}"
+                "#col { height: calc(100vh - 112px - 16px) !important; background-color: White !important, color: black !important;}"
+                "#list_files { "
+                    "height: 60vh !important;"
+                    "background-color: #525252 !important;"
+                "}"
+                
+
         ) as blocks:
-            with gr.Row():
-                gr.HTML(f"<div class='logo'/><img src={logo_svg} alt=PrivateGPT></div")
+            with gr.Row():  
+                gr.HTML(f"<div class='logo'; style='color: black; font-size: 36px'; padding-left: 16px;/>La Verdad Christian College</div")
 
             with gr.Row(equal_height=False):
-                with gr.Column(scale=3):
+                with gr.Column(scale=3):     
+                    with gr.Row():
+                        ingested_dataset = gr.List(
+                            self._list_ingested_files,
+                            elem_id="list_files",
+                            headers=["Ingested Files"],
+                            height=600,
+                            interactive=False,
+                            render=False,  # Rendered under the button
+                        )
+                        ingested_dataset.change(
+                            self._list_ingested_files,
+                            outputs=ingested_dataset,
+                        )
+                        ingested_dataset.render()
+                        with gr.Column(1):
+                            upload_button = gr.components.UploadButton(
+                                "Upload File(s)",
+                                type="filepath",
+                                file_count="multiple",
+                                size="sm",
+                            )
+                            upload_button.upload(
+                                self._upload_file,
+                                inputs=upload_button,
+                                outputs=ingested_dataset,
+                            )
+                        with gr.Column(1):
+                            deselect_file_button = gr.components.Button(
+                                "De-select selected file", size="sm", interactive=False
+                            )
+                        selected_text = gr.components.Textbox(
+                            "All files", label="Selected for Query or Deletion", max_lines=1
+                        )
+                        delete_file_button = gr.components.Button(
+                            "Delete selected file",
+                            size="sm",
+                            visible=settings().ui.delete_file_button_enabled,
+                            interactive=False,
+                        )
+                        delete_files_button = gr.components.Button(
+                            "Delete ALL files",
+                            size="sm",
+                            visible=settings().ui.delete_all_files_button_enabled,
+                        )
+                        deselect_file_button.click(
+                            self._deselect_selected_file,
+                            outputs=[
+                                delete_file_button,
+                                deselect_file_button,
+                                selected_text,
+                            ],
+                        )
+                        ingested_dataset.select(
+                            fn=self._selected_a_file,
+                            outputs=[
+                                delete_file_button,
+                                deselect_file_button,
+                                selected_text,
+                                # gr.Textbox(label="File Content"),
+                            ],
+                        ) 
+                with gr.Column(scale=7):
                     mode = gr.Radio(
                         MODES,
                         label="Mode",
                         value="Query Files",
-                    )
-                    upload_button = gr.components.UploadButton(
-                        "Upload File(s)",
-                        type="filepath",
-                        file_count="multiple",
-                        size="sm",
-                    )
-                    ingested_dataset = gr.List(
-                        self._list_ingested_files,
-                        headers=["File name"],
-                        label="Ingested Files",
-                        height=235,
-                        interactive=False,
-                        render=False,  # Rendered under the button
-                    )
-                    upload_button.upload(
-                        self._upload_file,
-                        inputs=upload_button,
-                        outputs=ingested_dataset,
-                    )
-                    ingested_dataset.change(
-                        self._list_ingested_files,
-                        outputs=ingested_dataset,
-                    )
-                    ingested_dataset.render()
-                    deselect_file_button = gr.components.Button(
-                        "De-select selected file", size="sm", interactive=False
-                    )
-                    selected_text = gr.components.Textbox(
-                        "All files", label="Selected for Query or Deletion", max_lines=1
-                    )
-                    delete_file_button = gr.components.Button(
-                        "🗑️ Delete selected file",
-                        size="sm",
-                        visible=settings().ui.delete_file_button_enabled,
-                        interactive=False,
-                    )
-                    delete_files_button = gr.components.Button(
-                        "⚠️ Delete ALL files",
-                        size="sm",
-                        visible=settings().ui.delete_all_files_button_enabled,
-                    )
-                    deselect_file_button.click(
-                        self._deselect_selected_file,
-                        outputs=[
-                            delete_file_button,
-                            deselect_file_button,
-                            selected_text,
-                        ],
-                    )
-                    ingested_dataset.select(
-                        fn=self._selected_a_file,
-                        outputs=[
-                            delete_file_button,
-                            deselect_file_button,
-                            selected_text,
-                        ],
                     )
                     delete_file_button.click(
                         self._delete_selected_file,
@@ -445,6 +506,7 @@ class PrivateGptUi:
                             "mock": llm_mode,
                             "ollama": config_settings.ollama.llm_model,
                         }
+                        
 
                         if llm_mode not in model_mapping:
                             print(f"Invalid 'llm mode': {llm_mode}")
@@ -452,6 +514,8 @@ class PrivateGptUi:
 
                         return model_mapping[llm_mode]
 
+                   
+                    
                 with gr.Column(scale=7, elem_id="col"):
                     # Determine the model label based on the value of PGPT_PROFILES
                     model_label = get_model_label()
@@ -476,6 +540,7 @@ class PrivateGptUi:
                         ),
                         additional_inputs=[mode, upload_button, system_prompt_input],
                     )
+                    
         return blocks
 
     def get_ui_blocks(self) -> gr.Blocks:
@@ -487,7 +552,11 @@ class PrivateGptUi:
         blocks = self.get_ui_blocks()
         blocks.queue()
         logger.info("Mounting the gradio UI, at path=%s", path)
-        gr.mount_gradio_app(app, blocks, path=path)
+        gr.mount_gradio_app(
+            app, 
+            blocks, 
+            path=path,
+        )
 
 
 if __name__ == "__main__":
